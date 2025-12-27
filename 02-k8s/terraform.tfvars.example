@@ -1,0 +1,19 @@
+# global config for the cluster autoscaler
+# see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md
+cluster_autoscaler_global_config = <<-EOT
+  default-ssh-key = ssh-rsa ......
+      ssh-ed25519 ......
+  EOT
+
+# nodegroup specific config for the cluster autoscaler
+# see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md
+cluster_autoscaler_nodegroup_configs = {
+  workers = <<-EOT
+    min-size=1
+    max-size=5
+    cpu=2B
+    ram=4096
+    disk=size=50
+    template-label="kubernetes.io/os=linux"
+  EOT
+}

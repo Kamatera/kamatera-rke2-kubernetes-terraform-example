@@ -1,0 +1,12 @@
+*.auto.tfvars
+*.auto.tfvars.json
+.env
+ssh_config
+ssh_known_hosts
+ssh_known_hosts.*
+.terraform*
+terraform.tfstate*
+.kubeconfig
+terraform.tfvars
+/.cluster_token
+/.dry_run/

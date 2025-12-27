@@ -1,0 +1,66 @@
+# Kamatera API credentials - replace with your own, must have sufficient permissions to create servers, networks
+kamatera_api_client_id = ""
+kamatera_api_secret = ""
+
+# set to your desired Kamatera datacenter ID
+datacenter_id = "EU"
+
+# name_prefix is prepended to all created resources
+# it must be globally unique within the datacenter make sure to use a unique value
+# it should be short and only contain lowercase letters and numbers
+name_prefix = "kmtrke2"
+
+# this is required for bootstrapping the servers
+# one of them must be the default ssh key on your local machine
+ssh_pubkeys = <<-EOT
+ssh-rsa AAAAB3NzaC... your_public_key ... user@hostname
+ssh-ed25519 AAAAC3... your_public_key ... user@hostname
+EOT
+
+# these are the servers that will be created for initial cluster bootstrapping
+# autoscaling groups are defined elsewhere
+# see the full list of available server parameters in `variables.tf`
+servers = {
+  // "default" will not be created, only used as default values for other servers
+  default = {
+    billing_cycle = "hourly"
+    daily_backup = false
+    managed = false
+    cpu_type = "B"
+    disk_sizes_gb = [100]
+  }
+
+  // bastion is required for accessing the other nodes which only allow SSH on private network
+  bastion = {
+    role = "bastion"
+    cpu_cores = 1
+    ram_mb = 1024
+    disk_sizes_gb = [20]
+  }
+
+  controlplane1 = {
+    role = "rke2"
+    role_config = {
+      rke2_type = "server"
+      is_first_controlplane = true
+    }
+    cpu_cores = 4
+    ram_mb = 8192
+  }
+  controlplane2 = {
+    role = "rke2"
+    role_config = {
+      rke2_type = "server"
+    }
+    cpu_cores = 4
+    ram_mb = 8192
+  }
+  "controlplane3" = {
+    role = "rke2"
+    role_config = {
+      rke2_type = "server"
+    }
+    cpu_cores = 4
+    ram_mb = 8192
+  }
+}
