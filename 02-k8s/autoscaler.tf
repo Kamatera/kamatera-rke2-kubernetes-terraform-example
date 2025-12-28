@@ -18,6 +18,10 @@ locals {
     echo "${filebase64("${path.module}/../server_startup_script.sh")}" | base64 --decode > /root/server_startup_script.sh
     export CLUSTER_TOKEN=${file("${path.module}/../.cluster_token")}
     export NODE_NAME="$(hostname | cut -d'-' -f2-)"
+    mkdir -p /etc/rancher/rke2/config.yaml.d
+    cat >/etc/rancher/rke2/config.yaml.d/99-extra-config.yaml <<-EOF
+    __RKE2_EXTRA_CONFIG__
+    EOF
     bash /root/server_startup_script.sh rke2 "${var.private_ip_prefix}" "${var.servers_ssh_port}" "agent" "${var.rke2_version}" "${base64encode(var.rke2_config)}" | tee /root/server_startup_script.log 2>&1
   EOT
 
@@ -25,6 +29,7 @@ locals {
     for name, ng in var.cluster_autoscaler_nodegroup_configs : <<-EOT
       [nodegroup "${name}"]
       name-prefix=${var.name_prefix}-${name}
+      script-base64=${base64encode(replace(local.autoscaler_script, "__RKE2_EXTRA_CONFIG__", try(var.cluster_autoscaler_nodegroup_rke2_extra_config[name], "")))}
       ${ng}
     EOT
   ])
@@ -44,7 +49,6 @@ resource "kubernetes_secret_v1" "autoscaler" {
       filter-name-prefix=${var.name_prefix}
       default-datacenter=${var.datacenter_id}
       default-image=${var.image_id}
-      default-script-base64=${base64encode(local.autoscaler_script)}
       default-network = "name=wan,ip=auto"
       default-network = "name=${var.private_network_name},ip=auto"
       ${var.cluster_autoscaler_global_config}
@@ -123,6 +127,9 @@ resource "kubernetes_deployment_v1" "autoscaler" {
           key = "CriticalAddonsOnly"
           operator = "Exists"
           effect = "NoExecute"
+        }
+        node_selector = {
+          "node-role.kubernetes.io/control-plane": "true"
         }
       }
     }

@@ -70,3 +70,8 @@ variable "controlplane_node_names" {
   description = "List of control plane node names to taint"
   type        = list(string)
 }
+
+variable "cluster_autoscaler_nodegroup_rke2_extra_config" {
+  description = "Map of extra RKE2 configurations for each nodegroup in Cluster Autoscaler"
+  type        = map(string)
+}
