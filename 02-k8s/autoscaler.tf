@@ -17,7 +17,6 @@ locals {
   autoscaler_script = <<-EOT
     echo "${filebase64("${path.module}/../server_startup_script.sh")}" | base64 --decode > /root/server_startup_script.sh
     export CLUSTER_TOKEN=${file("${path.module}/../.cluster_token")}
-    export NODE_NAME="$(hostname | cut -d'-' -f2-)"
     mkdir -p /etc/rancher/rke2/config.yaml.d
     cat >/etc/rancher/rke2/config.yaml.d/99-extra-config.yaml <<-EOF
     __RKE2_EXTRA_CONFIG__
@@ -90,9 +89,7 @@ resource "kubernetes_deployment_v1" "autoscaler" {
         service_account_name = "cluster-autoscaler"
         container {
           name = "cluster-autoscaler"
-          # image = "registry.k8s.io/autoscaling/cluster-autoscaler:v${var.cluster_autoscaler_version}"
-          # this image includes a fix to allow setting node template labels, waiting for it to be merged upstream
-          image = "ghcr.io/kamatera/kubernetes-autoscaler:v1.32-with-node-template-labels"
+          image = "registry.k8s.io/autoscaling/cluster-autoscaler:v${var.cluster_autoscaler_version}"
           resources {
             requests = {
               cpu = "100m"

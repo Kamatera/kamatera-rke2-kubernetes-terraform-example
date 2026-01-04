@@ -1,19 +1,49 @@
+# Kamatera API credentials for the cluster autoscaler
+cluster_autoscaler_kamatera_api_client_id = ""
+cluster_autoscaler_kamatera_api_secret = ""
+
 # global config for the cluster autoscaler
 # see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md
 cluster_autoscaler_global_config = <<-EOT
-  default-ssh-key = ssh-rsa ......
-      ssh-ed25519 ......
+  default-ssh-key = ssh-ed25519 AAAAC3...
   EOT
 
-# nodegroup specific config for the cluster autoscaler
+# example of nodegroup specific configs for the cluster autoscaler
+# you should modify these according to your requirements
 # see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md
 cluster_autoscaler_nodegroup_configs = {
-  workers = <<-EOT
-    min-size=1
-    max-size=5
-    cpu=2B
-    ram=4096
-    disk=size=50
+  /*
+  general = <<-EOT
+    min-size=3
+    max-size=6
+    cpu=4B
+    ram=16384
+    disk=size=100
     template-label="kubernetes.io/os=linux"
+    template-label="role=general"
   EOT
+
+  nginx = <<-EOT
+    max-size=2
+    cpu=4B
+    ram=8192
+    disk=size=100
+    template-label="kubernetes.io/os=linux"
+    template-label="role=nginx"
+  EOT
+  */
+}
+
+# extra rke2 configurations for each nodegroup
+cluster_autoscaler_nodegroup_rke2_extra_config = {
+  /*
+  general = <<-EOF
+    node-label:
+      - role=general
+  EOF
+  nginx = <<-EOF
+    node-label:
+      - role=nginx
+  EOF
+  */
 }

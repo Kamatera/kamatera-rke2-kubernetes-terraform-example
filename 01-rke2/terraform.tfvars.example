@@ -8,13 +8,13 @@ datacenter_id = "EU"
 # name_prefix is prepended to all created resources
 # it must be globally unique within the datacenter make sure to use a unique value
 # it should be short and only contain lowercase letters and numbers
-name_prefix = "kmtrke2"
+name_prefix = ""
 
 # this is required for bootstrapping the servers
-# one of them must be the default ssh key on your local machine
+# one of the keys must be the default ssh key on the local machine
 ssh_pubkeys = <<-EOT
-ssh-rsa AAAAB3NzaC... your_public_key ... user@hostname
-ssh-ed25519 AAAAC3... your_public_key ... user@hostname
+ssh-ed25519 AAAAC...
+ssh-ed25519 AAAAC3...
 EOT
 
 # these are the servers that will be created for initial cluster bootstrapping
@@ -38,6 +38,7 @@ servers = {
     disk_sizes_gb = [20]
   }
 
+  // first controlplane is required
   controlplane1 = {
     role = "rke2"
     role_config = {
@@ -47,6 +48,9 @@ servers = {
     cpu_cores = 4
     ram_mb = 8192
   }
+
+  // additional controlplane nodes are optional but recommended for high availability
+  // at least 3 controlplane nodes are recommended for production clusters
   controlplane2 = {
     role = "rke2"
     role_config = {
