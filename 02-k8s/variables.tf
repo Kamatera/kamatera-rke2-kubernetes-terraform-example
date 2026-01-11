@@ -4,6 +4,12 @@ variable "cluster_autoscaler_version" {
   default     = "1.34.2"
 }
 
+variable "cluster_autoscaler_image" {
+  description = "Optionally, specify a custom Cluster Autoscaler image"
+  type        = string
+  default     = ""
+}
+
 variable "cluster_autoscaler_kamatera_api_client_id" {
   description = "Kamatera API Client ID for Cluster Autoscaler"
   type        = string

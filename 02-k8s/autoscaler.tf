@@ -89,7 +89,7 @@ resource "kubernetes_deployment_v1" "autoscaler" {
         service_account_name = "cluster-autoscaler"
         container {
           name = "cluster-autoscaler"
-          image = "registry.k8s.io/autoscaling/cluster-autoscaler:v${var.cluster_autoscaler_version}"
+          image = var.cluster_autoscaler_image == "" ? "registry.k8s.io/autoscaling/cluster-autoscaler:v${var.cluster_autoscaler_version}" : var.cluster_autoscaler_image
           resources {
             requests = {
               cpu = "100m"
