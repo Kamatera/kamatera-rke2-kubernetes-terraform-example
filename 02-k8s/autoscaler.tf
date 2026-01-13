@@ -100,14 +100,14 @@ resource "kubernetes_deployment_v1" "autoscaler" {
               memory = "600Mi"
             }
           }
-          command = [
+          command = concat([
             "./cluster-autoscaler",
             "--cloud-provider=kamatera",
             "--cloud-config=/config/cloud-config",
             "--v=2",
             "--logtostderr=true",
-            "--namespace=kube-system"
-          ]
+            "--namespace=kube-system",
+          ], var.cluster_autoscaler_extra_args)
           volume_mount {
             name = "cloud-config"
             mount_path = "/config"

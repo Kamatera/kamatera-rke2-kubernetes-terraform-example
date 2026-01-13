@@ -81,3 +81,9 @@ variable "cluster_autoscaler_nodegroup_rke2_extra_config" {
   description = "Map of extra RKE2 configurations for each nodegroup in Cluster Autoscaler"
   type        = map(string)
 }
+
+variable "cluster_autoscaler_extra_args" {
+  description = "Extra arguments to pass to the Cluster Autoscaler container"
+  type        = list(string)
+  default     = []
+}
