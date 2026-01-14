@@ -44,6 +44,7 @@ resource "kubernetes_secret_v1" "autoscaler" {
       [global]
       kamatera-api-client-id=${var.cluster_autoscaler_kamatera_api_client_id}
       kamatera-api-secret=${var.cluster_autoscaler_kamatera_api_secret}
+      provider-id-prefix=rke2://
       cluster-name=${var.name_prefix}
       filter-name-prefix=${var.name_prefix}
       default-datacenter=${var.datacenter_id}
