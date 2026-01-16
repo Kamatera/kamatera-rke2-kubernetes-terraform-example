@@ -15,8 +15,12 @@ locals {
         BatchMode yes
         ConnectTimeout 3
       EOF
-      SSHSERVER="root@__PRIVATE_IP__" &&\
-      SSHCMD_INITIAL="ssh -F $TMPFILE -J root@${local.bastion_public_ip}:${local.bastion_public_port}" &&\
+      SSHSERVER="root@__SSH_IP__" &&\
+      if [ "${local.bastion_public_ip}" == "" ]; then
+        SSHCMD_INITIAL="ssh -F $TMPFILE"
+      else
+        SSHCMD_INITIAL="ssh -F $TMPFILE -J root@${local.bastion_public_ip}:${local.bastion_public_port}"
+      fi &&\
       SSHCMD="$SSHCMD_INITIAL -p ${local.servers_ssh_port}" &&\
       OK=false &&\
       for i in $(seq 1 60); do
@@ -38,9 +42,14 @@ locals {
         $SSHCMD_INITIAL $SSHSERVER "
           NODE_NAME=__NAME__ CLUSTER_TOKEN=$(cat "${abspath("${path.module}/../.cluster_token")}") bash /root/server_startup_script.sh rke2 __RKE2_ARGS__
         " &&\
-        ssh -F $TMPFILE \
-          root@${local.bastion_public_ip} -p ${local.bastion_public_port} \
-            "ssh-keyscan -p ${local.servers_ssh_port} __PRIVATE_IP__" > "${path.module}/ssh_known_hosts.__NAME__"
+        if [ "${local.bastion_public_ip}" == "" ]; then
+          ssh -F $TMPFILE \
+            "ssh-keyscan -p ${local.servers_ssh_port} __SSH_IP__" > "${path.module}/ssh_known_hosts.__NAME__"
+        else
+          ssh -F $TMPFILE \
+            root@${local.bastion_public_ip} -p ${local.bastion_public_port} \
+              "ssh-keyscan -p ${local.servers_ssh_port} __SSH_IP__" > "${path.module}/ssh_known_hosts.__NAME__"
+        fi
       else
         echo "Error: SSH is not available on server __NAME__ after multiple attempts."
         exit 1
@@ -61,10 +70,11 @@ locals {
       - $PUBLIC_IP
     etcd-snapshot-retention: 14  # snapshot every 12 hours, total of 1 week
   EOT
-  first_controlplane_ssh_command = replace(replace(replace(local.init_rke2_server_script,
+  first_controlplane_ssh_command = replace(replace(replace(replace(local.init_rke2_server_script,
     "__PRIVATE_IP__", kamatera_server.servers[local.first_controlplane_name].private_ips[0]),
     "__NAME__", local.first_controlplane_name),
-    "__RKE2_ARGS__", "${local.private_ip_prefix} ${local.servers_ssh_port} server ${var.rke2_version} ${base64encode(local.first_controlplane_rke2_config)}")
+    "__RKE2_ARGS__", "${local.private_ip_prefix} ${local.servers_ssh_port} server ${var.rke2_version} ${base64encode(local.first_controlplane_rke2_config)} ${local.bastion_public_ip == "" ? "no" : "yes"}"),
+    "__SSH_IP__", local.bastion_public_ip == "" ? kamatera_server.servers[local.first_controlplane_name].public_ips[0] : kamatera_server.servers[local.first_controlplane_name].private_ips[0])
   secondary_controlplanes_rke2_config = <<-EOT
       token: $CLUSTER_TOKEN
       server: https://${kamatera_server.servers[local.first_controlplane_name].private_ips[0]}:9345
@@ -108,7 +118,7 @@ resource "terraform_data" "init_rke2" {
   depends_on = [terraform_data.init_rke2_firstcontrolplane]
   for_each = {
     for name, server in var.servers :
-    name => replace(replace(replace(local.init_rke2_server_script,
+    name => replace(replace(replace(replace(local.init_rke2_server_script,
         "__PRIVATE_IP__", kamatera_server.servers[name].private_ips[0]),
         "__NAME__", name),
         "__RKE2_ARGS__", join(" ", [
@@ -116,8 +126,10 @@ resource "terraform_data" "init_rke2" {
           local.servers_ssh_port,
           server.role_config.rke2_type,
           var.rke2_version,
-          base64encode(server.role_config.rke2_type == "server" ? local.secondary_controlplanes_rke2_config : local.nodes_rke2_config)
-        ]))
+          base64encode(server.role_config.rke2_type == "server" ? local.secondary_controlplanes_rke2_config : local.nodes_rke2_config),
+          local.bastion_public_ip == "" ? "no" : "yes"
+        ])),
+        "__SSH_IP__", local.bastion_public_ip == "" ? kamatera_server.servers[name].public_ips[0] : kamatera_server.servers[name].private_ips[0])
     if server.role == "rke2" && name != local.first_controlplane_name
   }
   triggers_replace = {

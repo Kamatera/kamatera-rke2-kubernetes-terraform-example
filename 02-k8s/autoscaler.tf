@@ -1,10 +1,10 @@
-resource "terraform_data" "apply_autoscaler" {
+resource "terraform_data" "apply_autoscaler_rbac" {
   triggers_replace = {
-    autoscaler_yaml_hash = filemd5("${path.module}/autoscaler.yaml")
     command = <<-EOT
       set -euo pipefail
       export KUBECONFIG="${path.module}/../.kubeconfig"
-      kubectl apply -f "${path.module}/autoscaler.yaml"
+      curl -s "${var.cluster_autoscaler_rbac_url != "" ? var.cluster_autoscaler_rbac_url : "https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-${var.cluster_autoscaler_version}/cluster-autoscaler/cloudprovider/kamatera/examples/deployment.yaml"}" \
+        | kubectl apply -f -
     EOT
   }
   provisioner "local-exec" {
@@ -21,7 +21,7 @@ locals {
     cat >/etc/rancher/rke2/config.yaml.d/99-extra-config.yaml <<-EOF
     __RKE2_EXTRA_CONFIG__
     EOF
-    bash /root/server_startup_script.sh rke2 "${var.private_ip_prefix}" "${var.servers_ssh_port}" "agent" "${var.rke2_version}" "${base64encode(var.rke2_config)}" | tee /root/server_startup_script.log 2>&1
+    bash /root/server_startup_script.sh rke2 "${var.private_ip_prefix}" "${var.servers_ssh_port}" "agent" "${var.rke2_version}" "${base64encode(var.rke2_config)}" "${var.with_bastion ? "yes" : "no"}" | tee /root/server_startup_script.log 2>&1
   EOT
 
   nodegroup_configs = join("\n\n", [
@@ -74,7 +74,7 @@ resource "kubernetes_deployment_v1" "autoscaler" {
     }
   }
   spec {
-    replicas = 1
+    replicas = var.cluster_autoscaler_replicas
     selector {
       match_labels = {
         app = "cluster-autoscaler"

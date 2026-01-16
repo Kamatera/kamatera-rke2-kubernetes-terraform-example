@@ -26,7 +26,7 @@ resource "local_file" "ssh_config" {
   content = join(
     "\n",
     concat(
-      [
+      local.bastion_public_ip == "" ? [] : [
         <<-EOT
           Host ${var.name_prefix}-bastion
             HostName ${local.bastion_public_ip}
@@ -38,10 +38,10 @@ resource "local_file" "ssh_config" {
       [
         for name, server in var.servers : <<-EOT
           Host ${var.name_prefix}-${name}
-            HostName ${kamatera_server.servers[name].private_ips[0]}
+            HostName ${local.bastion_public_ip == "" ? kamatera_server.servers[name].public_ips[0] : kamatera_server.servers[name].private_ips[0]}
             User root
             Port ${local.servers_ssh_port}
-            ProxyJump ${var.name_prefix}-bastion
+            ${local.bastion_public_ip == "" ? "# " : ""}ProxyJump ${var.name_prefix}-bastion
             UserKnownHostsFile ${abspath("${path.module}/../ssh_known_hosts")}
         EOT
         if server.role == "rke2"

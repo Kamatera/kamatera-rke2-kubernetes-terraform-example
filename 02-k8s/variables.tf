@@ -1,11 +1,16 @@
 variable "cluster_autoscaler_version" {
   description = "Cluster Autoscaler version to deploy"
   type        = string
-  default     = "1.34.2"
 }
 
 variable "cluster_autoscaler_image" {
   description = "Optionally, specify a custom Cluster Autoscaler image"
+  type        = string
+  default     = ""
+}
+
+variable "cluster_autoscaler_rbac_url" {
+  description = "Optionally, URL for the Cluster Autoscaler RBAC manifest"
   type        = string
   default     = ""
 }
@@ -86,4 +91,16 @@ variable "cluster_autoscaler_extra_args" {
   description = "Extra arguments to pass to the Cluster Autoscaler container"
   type        = list(string)
   default     = []
+}
+
+variable "cluster_autoscaler_replicas" {
+  description = "Number of replicas for the Cluster Autoscaler deployment"
+  type        = number
+  default     = 1
+}
+
+variable "with_bastion" {
+  description = "Whether a bastion host is used for SSH access"
+  type        = bool
+  default     = true
 }

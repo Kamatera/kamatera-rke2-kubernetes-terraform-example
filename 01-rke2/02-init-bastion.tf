@@ -4,12 +4,14 @@ resource "random_integer" "bastion_ssh_port" {
 }
 
 locals {
-  bastion_server_name = [for name, server in var.servers : name if server.role == "bastion"][0]
-  bastion_public_ip = kamatera_server.servers[local.bastion_server_name].public_ips[0]
+  bastion_server_names = [for name, server in var.servers : name if server.role == "bastion"]
+  bastion_server_name = length(local.bastion_server_names) > 0 ? local.bastion_server_names[0] : ""
+  bastion_public_ip = local.bastion_server_name != "" ? kamatera_server.servers[local.bastion_server_name].public_ips[0] : ""
   bastion_public_port = random_integer.bastion_ssh_port.result
 }
 
 resource "terraform_data" "init_bastion" {
+  count = local.bastion_server_name != "" ? 1 : 0
   depends_on = [kamatera_server.servers]
   triggers_replace = {
     command = <<-EOT

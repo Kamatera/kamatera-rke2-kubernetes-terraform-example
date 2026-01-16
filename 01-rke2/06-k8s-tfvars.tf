@@ -9,6 +9,7 @@ resource "local_file" "autoscaler_tfvars" {
     private_ip_prefix = local.private_ip_prefix
     servers_ssh_port = local.servers_ssh_port
     rke2_config = local.nodes_rke2_config
+    with_bastion = local.bastion_public_ip != ""
   })
 }
 

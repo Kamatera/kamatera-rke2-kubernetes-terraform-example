@@ -67,4 +67,14 @@ servers = {
     cpu_cores = 4
     ram_mb = 8192
   }
+
+  // worker nodes
+  worker1 = {
+    role = "rke2"
+    role_config = {
+      rke2_type = "agent"
+    }
+    cpu_cores = 4
+    ram_mb = 8192
+  }
 }
