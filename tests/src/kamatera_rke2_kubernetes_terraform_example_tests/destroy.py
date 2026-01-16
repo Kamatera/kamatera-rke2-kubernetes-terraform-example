@@ -23,6 +23,42 @@ def cloudcli(*args, parse_json=False, run=False, **kwargs):
     return json.loads(res) if parse_json else res
 
 
+def terminate_servers(name_prefix):
+    while True:
+        print("Terminating servers...")
+        res = cloudcli("server", "terminate", "--force", "--name", f'{name_prefix}.*', "--wait", run=True, capture_output=True)
+        print(res.stdout)
+        print(res.stderr)
+        if res.returncode != 0:
+            if 'No servers found' in res.stdout:
+                break
+            else:
+                raise Exception(f"Failed to terminate servers")
+
+
+def terminate_networks(datacenter_id, name_prefix):
+    print(f"Terminating networks for datacenter_id {datacenter_id}...")
+    errors = []
+    network_vlan_ids = set()
+    network_ids = set()
+    for network in cloudcli("network", "list", "--datacenter", datacenter_id, parse_json=True):
+        for name in network['names']:
+            if name_prefix in name:
+                network_vlan_ids.add(network["vlanId"])
+                for id_ in network["ids"]:
+                    network_ids.add(id_)
+    for network_vlan_id in network_vlan_ids:
+        for subnet in cloudcli("network", "subnet_list", "--vlanId", str(network_vlan_id), "--datacenter", datacenter_id, parse_json=True):
+            res = cloudcli("network", "subnet_delete", "--subnetId", str(subnet["subnetId"]), run=True)
+            if res.returncode != 0:
+                errors.append(f'Failed to delete subnet {subnet["subnetId"]} in vlan {network_vlan_id} in datacenter {datacenter_id}')
+    for network_id in network_ids:
+        res = cloudcli("network", "delete", "--id", str(network_id), "--datacenter", datacenter_id, run=True)
+        if res.returncode != 0:
+            errors.append(f'Failed to delete network {network_id} in datacenter {datacenter_id}')
+    return errors
+
+
 def main(name_prefix=None, datacenter_id=None):
     tfdir = os.path.join(os.path.dirname(__file__), "..", "..", "..")
     if not name_prefix or not datacenter_id:
@@ -34,28 +70,17 @@ def main(name_prefix=None, datacenter_id=None):
                 if not datacenter_id:
                     datacenter_id = tfvars.get("datacenter_id")
     assert name_prefix
-    print("Terminating servers...")
-    res = cloudcli("server", "terminate", "--force", "--name", f'{name_prefix}.*', "--wait", run=True, capture_output=True)
-    print(res.stdout)
-    print(res.stderr)
-    if res.returncode != 0:
-        if 'No servers found' not in res.stdout:
-            raise Exception(f"Failed to terminate servers")
+    terminate_servers(name_prefix)
     assert datacenter_id
-    print("Terminating networks...")
-    network_vlan_ids = set()
-    network_ids = set()
-    for network in cloudcli("network", "list", "--datacenter", "US-NY2", parse_json=True):
-        for name in network['names']:
-            if name_prefix in name:
-                network_vlan_ids.add(network["vlanId"])
-                for id_ in network["ids"]:
-                    network_ids.add(id_)
-    for network_vlan_id in network_vlan_ids:
-        for subnet in cloudcli("network", "subnet_list", "--vlanId", str(network_vlan_id), "--datacenter", datacenter_id, parse_json=True):
-            cloudcli("network", "subnet_delete", "--subnetId", str(subnet["subnetId"]))
-    for network_id in network_ids:
-        cloudcli("network", "delete", "--id", str(network_id), "--datacenter", datacenter_id)
+    if "," in datacenter_id:
+        datacenter_ids = [dc.strip() for dc in datacenter_id.split(",")]
+    else:
+        datacenter_ids = [datacenter_id]
+    errors = []
+    for dc_id in datacenter_ids:
+        errors += terminate_networks(dc_id, name_prefix)
+    if errors:
+        raise Exception("Errors occurred during network termination:\n" + "\n".join(errors))
     subprocess.check_call(["bash", "-c", '''
         rm -f */*.auto.tfvars.json
         rm -rf */terraform.tfstate*

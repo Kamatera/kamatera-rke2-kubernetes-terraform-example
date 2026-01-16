@@ -3,6 +3,7 @@ import json
 import subprocess
 import time
 import datetime
+import traceback
 
 
 def get_ssh_pubkeys():
@@ -35,31 +36,41 @@ def kubectl(*args, parse_json=False, run=False, **kwargs):
         return None
 
 
-def wait_for(description, condition, timeout_seconds=900, progress=None, poll_seconds=15):
+def wait_for(description, condition, timeout_seconds=900, progress=None, poll_seconds=15, retry_on_exception=False):
     start_time = time.time()
     print(f'waiting for condition: {description} (with timeout {timeout_seconds} seconds)')
     print(f'start time: {datetime.datetime.now().isoformat()}')
+
+    def progress_():
+        if progress:
+            try:
+                res = progress()
+                if res is not None:
+                    print(res)
+            except:
+                traceback.print_exc()
+
     i = 0
     while True:
         i += 1
-        if condition():
+        try:
+            res = condition()
+        except:
+            if retry_on_exception:
+                traceback.print_exc()
+                res = False
+            else:
+                raise
+        if res:
             print(f'condition met: {description}')
             print(f'end time: {datetime.datetime.now().isoformat()}')
-            if progress:
-                res = progress()
-                if res is not None:
-                    print(res)
+            progress_()
             return
         if time.time() - start_time > timeout_seconds:
-            if progress:
-                res = progress()
-                if res is not None:
-                    print(res)
+            progress_()
             raise AssertionError(f"timeout waiting for {description}")
-        if i % 10 == 0 and progress:
-            res = progress()
-            if res is not None:
-                print(res)
+        if i % 10 == 0:
+            progress_()
         time.sleep(poll_seconds)
 
 

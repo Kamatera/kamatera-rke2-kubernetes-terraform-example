@@ -51,13 +51,18 @@ def assert_demo_app(with_bastion=True, extra_servers=None):
         util.wait_for(
             f"{expected_ready_nodes} nodes to be ready",
             lambda: util.kubectl_node_count() == (expected_ready_nodes,expected_ready_nodes),
-            progress=lambda: util.kubectl("get", "nodes")
+            progress=lambda: util.kubectl("get", "nodes"),
+            retry_on_exception=True
         )
         nodes = util.kubectl("get", "nodes", parse_json=True)["items"]
         assert {node["metadata"]["name"] for node in nodes} == {
             "controlplane1", *extra_servers.keys()
         }
-        util.kubectl("apply", "-f", "k8s_demo_app.yaml", cwd=os.path.join(os.path.dirname(__file__)))
+        util.wait_for(
+            "deployment of k8s_demo_app",
+            lambda: util.kubectl("apply", "-f", "k8s_demo_app.yaml", cwd=os.path.join(os.path.dirname(__file__))) or True,
+            retry_on_exception=True
+        )
         util.wait_for(
             "2 pods to be running",
             lambda: util.kubectl_pods_count("demo") == (2,2),
