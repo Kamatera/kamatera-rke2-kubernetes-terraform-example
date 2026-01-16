@@ -106,6 +106,7 @@ function init_rke2 {
     local rke2_type="${3}"
     local rke2_version="${4}"
     local rke2_config_b64="${5}"
+    local with_bastion="${6}"
     local private_ip="$(find_ip_by_prefix "${private_ip_prefix}")"
     local public_ip="$(find_public_ip)"
     if [ -z "${private_ip}" ]; then
@@ -118,17 +119,28 @@ function init_rke2 {
     fi
     echo "Private IP: ${private_ip}"
     echo "Public IP: ${public_ip}"
-    init_ssh "${private_ip}" "${ssh_port}"
+    if [ "${with_bastion}" == "yes" ]; then
+      local ssh_ip="${private_ip}"
+    else
+      local ssh_ip="0.0.0.0"
+    fi
+    init_ssh "${ssh_ip}" "${ssh_port}"
     set_rke2_node_settings
     echo "Installing RKE2 type=${rke2_type} version=${rke2_version}"
     mkdir -p "${ROOT_PATH}/etc/rancher/rke2"
     export PRIVATE_IP="${private_ip}"
     export PUBLIC_IP="${public_ip}"
     echo "${rke2_config_b64}" | base64 -d | envsubst > "${ROOT_PATH}/etc/rancher/rke2/config.yaml"
+    export INSTALL_RKE2_TYPE="${rke2_type}"
+    if [[ "$rke2_version" == *+* ]]; then
+      export INSTALL_RKE2_VERSION="${rke2_version}"
+    else
+      export INSTALL_RKE2_CHANNEL="${rke2_version}"
+    fi
     if dry_run; then
       echo "Dry run: would install RKE2"
     else
-      curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE="${rke2_type}" INSTALL_RKE2_VERSION="${rke2_version}" sh -
+      curl -sfL https://get.rke2.io | sh -
       if systemctl is-active --quiet "rke2-${rke2_type}.service"; then
         systemctl restart "rke2-${rke2_type}.service"
       else
