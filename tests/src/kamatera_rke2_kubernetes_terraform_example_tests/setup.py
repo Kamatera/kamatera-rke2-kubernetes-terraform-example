@@ -122,11 +122,19 @@ def main(name_prefix=None, k8s_version=None, rke2_version=None, datacenter_id=No
             datacenter_id = "US-NY2"
         write_rke2_tfvars(tfdir, name_prefix, rke2_version, datacenter_id, ssh_pubkeys, with_bastion, extra_servers)
         subprocess.check_call(["terraform", "init"], cwd=os.path.join(tfdir, "01-rke2"))
-        subprocess.check_call(["terraform", "apply", "-auto-approve"], cwd=os.path.join(tfdir, "01-rke2"))
+        util.wait_for(
+            "Terraform apply for rke2 to complete",
+            lambda: subprocess.check_call(["terraform", "apply", "-auto-approve"], cwd=os.path.join(tfdir, "01-rke2")) or True,
+            retry_on_exception=True
+        )
         if k8s_tfvars_config:
             write_k8s_tfvars(tfdir, ssh_pubkeys, k8s_version, k8s_tfvars_config)
             subprocess.check_call(["terraform", "init"], cwd=os.path.join(tfdir, "02-k8s"))
-            subprocess.check_call(["terraform", "apply", "-auto-approve"], cwd=os.path.join(tfdir, "02-k8s"))
+            util.wait_for(
+                "Terraform apply for k8s to complete",
+                lambda: subprocess.check_call(["terraform", "apply", "-auto-approve"], cwd=os.path.join(tfdir, "02-k8s")) or True,
+                retry_on_exception=True
+            )
     finally:
         print(f'name prefix: {name_prefix}')
     return name_prefix

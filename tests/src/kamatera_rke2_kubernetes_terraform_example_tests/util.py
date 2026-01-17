@@ -4,14 +4,87 @@ import subprocess
 import time
 import datetime
 import traceback
+from textwrap import dedent
+
+from . import destroy
 
 
 def get_ssh_pubkeys():
     return subprocess.check_output(["bash", "-c", "cat ~/.ssh/*.pub"]).decode().strip()
 
 
-def get_kubeconfig():
-    return os.path.join(os.path.dirname(__file__), "..", "..", "..", ".kubeconfig")
+def get_ssh_config(name_prefix=None, bastion_port=None, nodes_port=None, identity_file=None):
+    if name_prefix:
+        ssh_config = os.path.join(os.path.dirname(__file__), "..", "..", "..", f"ssh_config_{name_prefix}")
+        if not identity_file:
+            identity_file = os.path.expanduser("~/.ssh/id_rsa")
+        if bastion_port:
+            bastion_public_ip = None
+            for network in destroy.cloudcli("server", "info", "--name", f"{name_prefix}-bastion", parse_json=True)[0]["networks"]:
+                if network["network"].startswith("wan-"):
+                    bastion_public_ip = network["ips"][0]
+                    break
+            assert bastion_public_ip
+            controlplane_private_ip = None
+            for network in destroy.cloudcli("server", "info", "--name", f"{name_prefix}-controlplane1", parse_json=True)[0]["networks"]:
+                if network["network"].startswith("lan-"):
+                    controlplane_private_ip = network["ips"][0]
+                    break
+            assert controlplane_private_ip
+            with open(ssh_config, "w") as f:
+                f.write(dedent(f'''
+                    Host {name_prefix}-bastion
+                      HostName {bastion_public_ip}
+                      User root
+                      Port {bastion_port}
+                      IdentityFile {identity_file}
+                    Host {name_prefix}-controlplane1
+                      HostName {controlplane_private_ip}
+                      User root
+                      Port {nodes_port}
+                      ProxyJump {name_prefix}-bastion
+                      IdentityFile {identity_file}
+                '''))
+        else:
+            controlplane_public_ip = None
+            for network in destroy.cloudcli("server", "info", "--name", f"{name_prefix}-controlplane1", parse_json=True)[0]["networks"]:
+                if network["network"].startswith("wan-"):
+                    controlplane_public_ip = network["ips"][0]
+                    break
+            assert controlplane_public_ip
+            with open(ssh_config, "w") as f:
+                f.write(dedent(f'''
+                    Host {name_prefix}-controlplane1
+                      HostName {controlplane_public_ip}
+                      User root
+                      Port {nodes_port}
+                      IdentityFile {identity_file}
+                '''))
+    else:
+        ssh_config = os.path.join(os.path.dirname(__file__), "..", "..", "..", "ssh_config")
+    return ssh_config
+
+
+def get_kubeconfig(name_prefix=None, bastion_port=None, nodes_port=None, identity_file=None):
+    if name_prefix:
+        kubeconfig = os.path.join(os.path.dirname(__file__), "..", "..", "..", f".kubeconfig-{name_prefix}")
+        ssh_config = get_ssh_config(name_prefix, bastion_port, nodes_port, identity_file)
+        controlplane_public_ip = None
+        for network in destroy.cloudcli("server", "info", "--name", f"{name_prefix}-controlplane1", parse_json=True)[0][
+            "networks"]:
+            if network["network"].startswith("wan-"):
+                controlplane_public_ip = network["ips"][0]
+                break
+        assert controlplane_public_ip
+        subprocess.check_call([
+            "bash", "-c", f'''
+                ssh -F {ssh_config} {name_prefix}-controlplane1 "cat /etc/rancher/rke2/rke2.yaml" > {kubeconfig}
+                sed -i 's/127.0.0.1/{controlplane_public_ip}/g' {kubeconfig}
+            '''
+        ])
+    else:
+        kubeconfig = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".kubeconfig")
+    return kubeconfig
 
 
 def kubectl(*args, parse_json=False, run=False, **kwargs):
@@ -36,7 +109,7 @@ def kubectl(*args, parse_json=False, run=False, **kwargs):
         return None
 
 
-def wait_for(description, condition, timeout_seconds=900, progress=None, poll_seconds=15, retry_on_exception=False):
+def wait_for(description, condition, timeout_seconds=1800, progress=None, poll_seconds=15, retry_on_exception=False):
     start_time = time.time()
     print(f'waiting for condition: {description} (with timeout {timeout_seconds} seconds)')
     print(f'start time: {datetime.datetime.now().isoformat()}')

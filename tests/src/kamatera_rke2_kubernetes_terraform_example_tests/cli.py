@@ -34,3 +34,23 @@ def setup(**kwargs):
 def destroy(**kwargs):
     from . import destroy
     destroy.main(**kwargs)
+
+
+@main.command()
+@click.option('--name-prefix')
+@click.option("--bastion-port")
+@click.option("--nodes-port")
+@click.option('--identity-file')
+def get_kubeconfig(**kwargs):
+    from . import util
+    print(util.get_kubeconfig(**kwargs))
+
+
+@main.command()
+@click.option('--name-prefix')
+@click.option("--bastion-port")
+@click.option("--nodes-port")
+@click.option('--identity-file')
+def get_ssh_config(**kwargs):
+    from . import util
+    print(util.get_ssh_config(**kwargs))

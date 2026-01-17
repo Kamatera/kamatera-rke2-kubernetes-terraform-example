@@ -43,8 +43,7 @@ locals {
           NODE_NAME=__NAME__ CLUSTER_TOKEN=$(cat "${abspath("${path.module}/../.cluster_token")}") bash /root/server_startup_script.sh rke2 __RKE2_ARGS__
         " &&\
         if [ "${local.bastion_public_ip}" == "" ]; then
-          ssh -F $TMPFILE \
-            "ssh-keyscan -p ${local.servers_ssh_port} __SSH_IP__" > "${path.module}/ssh_known_hosts.__NAME__"
+          ssh-keyscan -p ${local.servers_ssh_port} __SSH_IP__ > "${path.module}/ssh_known_hosts.__NAME__"
         else
           ssh -F $TMPFILE \
             root@${local.bastion_public_ip} -p ${local.bastion_public_port} \

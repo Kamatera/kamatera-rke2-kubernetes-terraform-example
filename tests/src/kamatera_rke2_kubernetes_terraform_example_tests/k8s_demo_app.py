@@ -51,7 +51,16 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas):
         ca_replicas=ca_replicas,
         ca_extra_args=[
             "--cordon-node-before-terminating",
-            "--scale-down-unneeded-time=2m",
+            # we set low thresholds for faster testing
+            "--scale-down-unneeded-time=1m",
+            "--initial-node-group-backoff-duration=1m",
+            "--max-node-group-backoff-duration=2m",
+            "--max-node-startup-time=5m",
+            "--node-group-backoff-reset-timeout=5m",
+            "--provisioning-request-max-backoff-time=5m",
+            "--scale-down-delay-after-add=1m",
+            "--scale-down-delay-after-failure=1m",
+            "--scale-down-unready-time=2m",
         ],
         ca_nodegroup_configs={
             "autoscaler": dedent('''
@@ -194,6 +203,9 @@ def assert_demo_app(extra_servers=None):
         )
         yield name_prefix, datacenter_id, k8s_version, nodes, demo_pods, node_external_ips
     except:
+        util.kubectl("logs", "-n", "kube-system", "deployment/cluster-autoscaler")
+        util.kubectl("get", "nodes")
+        util.kubectl("get", "pods", "-n", "demo")
         print(f'name_prefix="{name_prefix}"')
         raise
     else:

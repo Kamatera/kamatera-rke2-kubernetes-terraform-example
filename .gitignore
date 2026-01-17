@@ -10,3 +10,6 @@ terraform.tfstate*
 terraform.tfvars
 /.cluster_token
 /.dry_run/
+/.kubeconfig*
+/ssh_config*
+
