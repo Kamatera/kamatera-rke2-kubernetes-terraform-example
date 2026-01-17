@@ -58,9 +58,10 @@ class K8STfvarsConfig:
     ca_replicas: int = 1
     ca_image: str = None
     ca_extra_global_config: str = None
-    ca_nodegroup_configs: str = None
-    ca_nodegroup_rke2_extra_config: str = None
+    ca_nodegroup_configs: dict = None
+    ca_nodegroup_rke2_extra_config: dict = None
     ca_extra_args: list = None
+    ca_rbac_url: str = None
 
 
 def write_k8s_tfvars(tfdir, ssh_pubkeys, k8s_version, tfvars_config: K8STfvarsConfig):
@@ -95,7 +96,8 @@ def write_k8s_tfvars(tfdir, ssh_pubkeys, k8s_version, tfvars_config: K8STfvarsCo
             "cluster_autoscaler_global_config": ca_global_config,
             "cluster_autoscaler_nodegroup_configs": ca_nodegroup_configs,
             "cluster_autoscaler_nodegroup_rke2_extra_config": ca_nodegroup_rke2_extra_config,
-            "cluster_autoscaler_extra_args": ca_extra_args
+            "cluster_autoscaler_extra_args": ca_extra_args,
+            "cluster_autoscaler_rbac_url": tfvars_config.ca_rbac_url,
         }, indent=2))
 
 

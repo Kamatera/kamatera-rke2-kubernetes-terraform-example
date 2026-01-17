@@ -33,7 +33,7 @@ def terminate_servers(name_prefix):
             if 'No servers found' in res.stdout:
                 break
             else:
-                raise Exception(f"Failed to terminate servers")
+                raise Exception(f"Failed to terminate servers (returncode={res.returncode})")
 
 
 def terminate_networks(datacenter_id, name_prefix):

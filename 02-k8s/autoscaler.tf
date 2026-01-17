@@ -3,7 +3,7 @@ resource "terraform_data" "apply_autoscaler_rbac" {
     command = <<-EOT
       set -euo pipefail
       export KUBECONFIG="${path.module}/../.kubeconfig"
-      curl -s "${var.cluster_autoscaler_rbac_url != "" ? var.cluster_autoscaler_rbac_url : "https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-${var.cluster_autoscaler_version}/cluster-autoscaler/cloudprovider/kamatera/examples/deployment.yaml"}" \
+      curl -s "${var.cluster_autoscaler_rbac_url != "" ? var.cluster_autoscaler_rbac_url : "https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-${var.cluster_autoscaler_version}/cluster-autoscaler/cloudprovider/kamatera/examples/rbac.yaml"}" \
         | kubectl apply -f -
     EOT
   }

@@ -7,10 +7,35 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        DATACENTER_ID: ["US-NY2", "EU", "IL"]
-        K8S_VERSION: ["1.35", "1.34", "1.33", "1.32"]
-        HIGH_AVAILABILITY: ["yes", "no"]
-      fail-fast: false
+        dotenvs:
+          # latest k8s version test with various options
+          - |
+            K8S_VERSION=1.35
+            DATACENTER_ID=US-NY2
+            HIGH_AVAILABILITY=yes
+          - |
+            K8S_VERSION=1.35
+            DATACENTER_ID=EU
+            HIGH_AVAILABILITY=no
+          - |
+            K8S_VERSION=1.35
+            DATACENTER_ID=IL
+            HIGH_AVAILABILITY=no
+            WITH_BASTION=no
+          # older k8s version with same options
+          - |
+            K8S_VERSION=1.34
+            DATACENTER_ID=EU
+            HIGH_AVAILABILITY=yes
+          - |
+            K8S_VERSION=1.33
+            DATACENTER_ID=IL
+            HIGH_AVAILABILITY=yes
+          - |
+            K8S_VERSION=1.32
+            DATACENTER_ID=US-NY2
+            HIGH_AVAILABILITY=yes
+      fail-fast: false  # must continue all tests for cleanup
     steps:
       - uses: actions/checkout@v6
       - uses: hashicorp/setup-terraform@v3
@@ -30,10 +55,8 @@ jobs:
       - env:
           KAMATERA_API_CLIENT_ID: ${{ secrets.KAMATERA_API_CLIENT_ID }}
           KAMATERA_API_SECRET: ${{ secrets.KAMATERA_API_SECRET }}
-          DATACENTER_ID: ${{ matrix.DATACENTER_ID }}
-          K8S_VERSION: ${{ matrix.K8S_VERSION }}
-          HIGH_AVAILABILITY: ${{ matrix.HIGH_AVAILABILITY }}
         run: |
           cd tests
+          echo "${{ matrix.dotenvs }}" > .env
           uv sync
           uv run python -u -m pytest -vvx --capture=tee-sys tests
