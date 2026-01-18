@@ -55,7 +55,6 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas):
             "--scale-down-unneeded-time=1m",
             "--initial-node-group-backoff-duration=1m",
             "--max-node-group-backoff-duration=2m",
-            # "--max-node-startup-time=5m",
             "--node-group-backoff-reset-timeout=5m",
             "--provisioning-request-max-backoff-time=5m",
             "--scale-down-delay-after-add=1m",

@@ -15,6 +15,7 @@ resource "terraform_data" "apply_autoscaler_rbac" {
 
 locals {
   autoscaler_script = <<-EOT
+    set -euo pipefail
     echo "${filebase64("${path.module}/../server_startup_script.sh")}" | base64 --decode > /root/server_startup_script.sh
     export CLUSTER_TOKEN=${file("${path.module}/../.cluster_token")}
     mkdir -p /etc/rancher/rke2/config.yaml.d

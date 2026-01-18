@@ -109,7 +109,7 @@ def kubectl(*args, parse_json=False, run=False, **kwargs):
         return None
 
 
-def wait_for(description, condition, timeout_seconds=1800, progress=None, poll_seconds=15, retry_on_exception=False):
+def wait_for(description, condition, timeout_seconds=7200, progress=None, poll_seconds=15, retry_on_exception=False):
     start_time = time.time()
     print(f'waiting for condition: {description} (with timeout {timeout_seconds} seconds)')
     print(f'start time: {datetime.datetime.now().isoformat()}')
