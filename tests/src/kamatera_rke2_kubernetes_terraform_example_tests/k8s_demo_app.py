@@ -211,7 +211,8 @@ def assert_demo_app(extra_servers=None):
         if keep_cluster:
             print(f'name_prefix="{name_prefix}"')
         else:
-            destroy.main(
-                name_prefix=name_prefix,
-                datacenter_id=datacenter_id,
+            util.wait_for(
+                "cluster to be destroyed",
+                lambda: destroy.main(name_prefix=name_prefix, datacenter_id=datacenter_id) or True,
+                retry_on_exception=True
             )

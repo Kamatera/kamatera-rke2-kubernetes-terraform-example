@@ -1,6 +1,7 @@
 import os
 import json
 import subprocess
+import traceback
 
 from . import config
 
@@ -70,17 +71,21 @@ def main(name_prefix=None, datacenter_id=None):
                 if not datacenter_id:
                     datacenter_id = tfvars.get("datacenter_id")
     assert name_prefix
-    terminate_servers(name_prefix)
     assert datacenter_id
+    errors = []
+    try:
+        terminate_servers(name_prefix)
+    except:
+        traceback.print_exc()
+        errors.append("Failed to terminate servers.")
     if "," in datacenter_id:
         datacenter_ids = [dc.strip() for dc in datacenter_id.split(",")]
     else:
         datacenter_ids = [datacenter_id]
-    errors = []
     for dc_id in datacenter_ids:
         errors += terminate_networks(dc_id, name_prefix)
     if errors:
-        raise Exception("Errors occurred during network termination:\n" + "\n".join(errors))
+        raise Exception("Errors occurred during termination:\n" + "\n".join(errors))
     subprocess.check_call(["bash", "-c", '''
         rm -f */*.auto.tfvars.json
         rm -rf */terraform.tfstate*
