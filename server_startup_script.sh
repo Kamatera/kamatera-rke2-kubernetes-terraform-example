@@ -102,6 +102,7 @@ EOF
 
 function verify_rke2 {
   echo "Verifying RKE2 installation"
+  export PATH="/var/lib/rancher/rke2/bin/:$PATH"
   local calico_kubeconfig=/etc/cni/net.d/calico-kubeconfig
   for i in {1..120}; do
     if [ -f "${calico_kubeconfig}" ]; then
