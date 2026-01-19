@@ -100,6 +100,32 @@ export KUBECONFIG="/etc/rancher/rke2/rke2.yaml"
 EOF
 }
 
+function verify_rke2 {
+  echo "Verifying RKE2 installation"
+  local calico_kubeconfig=/etc/cni/net.d/calico-kubeconfig
+  for i in {1..120}; do
+    if [ -f "${calico_kubeconfig}" ]; then
+      break
+    else
+      echo "Waiting for Calico kubeconfig to be created..."
+      sleep 1
+    fi
+  done
+  if ! [ -f "${calico_kubeconfig}" ]; then
+    echo "ERROR! Calico kubeconfig file not found after 2 minutes."
+    return 1
+  fi
+  sleep 5
+  if cat /etc/cni/net.d/calico-kubeconfig | grep '\[10.43.0.1\]' && ! kubectl --kubeconfig=$calico_kubeconfig version; then
+    sed -i 's#\[10\.43\.0\.1\]#10.43.0.1#g' $calico_kubeconfig
+  fi
+  if ! kubectl --kubeconfig=$calico_kubeconfig version; then
+    echo "ERROR! Unable to connect to RKE2 cluster using Calico kubeconfig."
+    return 1
+  fi
+  echo "RKE2 installation verified successfully"
+}
+
 function init_rke2 {
     local private_ip_prefix="${1}"
     local ssh_port="${2}"
@@ -147,6 +173,7 @@ function init_rke2 {
         systemctl enable "rke2-${rke2_type}.service"
         systemctl start "rke2-${rke2_type}.service"
       fi
+      verify_rke2
     fi
 }
 
