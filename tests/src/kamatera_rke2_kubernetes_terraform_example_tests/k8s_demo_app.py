@@ -81,6 +81,21 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas):
     )
 
 
+def ensure_stability(expected_nodes, expected_pods, iterations=10):
+    print(f'Ensuring cluster stability')
+    print(f'expected_nodes={expected_nodes}')
+    print(f'expected_pods={expected_pods}')
+    for i in range(iterations):
+        print(f'iteration {i + 1}/{iterations}...')
+        time.sleep(60)
+        if util.kubectl_node_count() != expected_nodes:
+            util.kubectl("get", "nodes")
+            raise Exception("Unexpected node count")
+        if util.kubectl_pods_count("demo") != expected_pods:
+            util.kubectl("get", "pods", "-n", "demo")
+            raise Exception("Unexpected pod count")
+
+
 @contextmanager
 def assert_demo_app(extra_servers=None):
     use_existing_name_prefix = os.getenv("USE_EXISTING_NAME_PREFIX")
@@ -178,15 +193,10 @@ def assert_demo_app(extra_servers=None):
         )
         pods = util.kubectl("get", "pods", "-n", "demo", parse_json=True)["items"]
         assert len(pods) == 2 and all(pod["spec"]["nodeName"].startswith(f"{name_prefix}-autoscaler-") for pod in pods), pods
-        for i in range(10):
-            print(f'Ensuring autoscaler nodes are stable ({i + 1}/10)...')
-            time.sleep(60)
-            if util.kubectl_node_count() != (expected_ready_nodes, expected_ready_nodes):
-                util.kubectl("get", "nodes")
-                raise Exception("Unexpected node count")
-            if util.kubectl_pods_count("demo") != (2, 2):
-                util.kubectl("get", "pods", "-n", "demo")
-                raise Exception("Unexpected pod count")
+        ensure_stability(
+            (expected_ready_nodes, expected_ready_nodes),
+            (2, 2)
+        )
         util.kubectl("scale", "deployment", "demo", "-n", "demo", "--replicas=0")
         util.wait_for(
             "all demo pods terminated",
@@ -199,6 +209,10 @@ def assert_demo_app(extra_servers=None):
             f"{expected_total_nodes} total nodes, {expected_ready_nodes} ready nodes",
             lambda: util.kubectl_node_count() == (expected_total_nodes, expected_ready_nodes),
             progress=lambda: util.kubectl("get", "nodes"),
+        )
+        ensure_stability(
+            (expected_total_nodes, expected_ready_nodes),
+            (0, 0)
         )
         yield name_prefix, datacenter_id, k8s_version, nodes, demo_pods, node_external_ips
     except:
