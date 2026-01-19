@@ -24,12 +24,23 @@ jobs:
             WITH_BASTION=no
           - |
             K8S_VERSION=1.35
+            DATACENTER_ID=IL
+            HIGH_AVAILABILITY=no
+            WITH_BASTION=no
+            WITH_KAMATERA_CONTROLLER=no
+          - |
+            K8S_VERSION=1.35
             DATACENTER_ID=US-NY2
             HIGH_AVAILABILITY=yes
           - |
             K8S_VERSION=1.35
             DATACENTER_ID=US-NY2
             HIGH_AVAILABILITY=yes
+          - |
+            K8S_VERSION=1.35
+            DATACENTER_ID=US-NY2
+            HIGH_AVAILABILITY=yes
+            WITH_KAMATERA_CONTROLLER=no
           # older k8s version with same options
           - |
             K8S_VERSION=1.34

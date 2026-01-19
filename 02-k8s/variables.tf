@@ -1,6 +1,7 @@
 variable "cluster_autoscaler_version" {
   description = "Cluster Autoscaler version to deploy"
   type        = string
+  default     = ""
 }
 
 variable "cluster_autoscaler_image" {
@@ -50,11 +51,13 @@ variable "private_network_name" {
 variable "cluster_autoscaler_global_config" {
   description = "global configurations for Cluster Autoscaler cloud-config, see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md"
   type        = string
+  default     = ""
 }
 
 variable "cluster_autoscaler_nodegroup_configs" {
   description = "Map of nodegroup specific configurations for Cluster Autoscaler, key is the nodegroup name, value is the configurations, see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md"
   type        = map(string)
+  default     = {}
 }
 
 variable "rke2_version" {
@@ -85,6 +88,7 @@ variable "controlplane_node_names" {
 variable "cluster_autoscaler_nodegroup_rke2_extra_config" {
   description = "Map of extra RKE2 configurations for each nodegroup in Cluster Autoscaler"
   type        = map(string)
+  default     = {}
 }
 
 variable "cluster_autoscaler_extra_args" {
@@ -103,4 +107,30 @@ variable "with_bastion" {
   description = "Whether a bastion host is used for SSH access"
   type        = bool
   default     = true
+}
+
+variable "kamatera_controller_rbac_url" {
+  description = "Optionally, URL for the Kamatera Cloud Controller Manager RBAC manifest"
+  type        = string
+  default     = ""
+}
+
+variable "kamatera_controller_replicas" {
+  description = "Number of replicas for the Kamatera Controller"
+  type        = number
+  default     = 1
+}
+
+variable "kamatera_controller_image" {
+  description = "Optionally, specify a custom Kamatera Controller image"
+  type        = string
+  default     = ""
+}
+
+variable "kamatera_controller_args" {
+  description = "Aarguments to pass to the Kamatera Controller"
+  type        = list(string)
+  default     = [
+    "-not-ready-duration=15m"
+  ]
 }

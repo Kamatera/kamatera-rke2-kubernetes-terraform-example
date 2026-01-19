@@ -44,7 +44,7 @@ def get_extra_servers(extra_servers, high_availability):
     return extra_servers
 
 
-def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas):
+def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1):
     return setup.K8STfvarsConfig(
         ca_rbac_url='https://raw.githubusercontent.com/Kamatera/kubernetes-autoscaler/refs/heads/kamatera-cluster-autoscaler/cluster-autoscaler/cloudprovider/kamatera/examples/rbac.yaml',
         ca_image=cluster_autoscaler_image,
@@ -78,6 +78,7 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas):
                   - role=autoscaler
             ''')
         },
+        controller_replicas=controller_replicas,
     )
 
 
@@ -107,6 +108,7 @@ def assert_demo_app(extra_servers=None):
     cluster_autoscaler_image = os.getenv("CLUSTER_AUTOSCALER_IMAGE") or 'ghcr.io/kamatera/kubernetes-autoscaler:kamatera-cluster-autoscaler'
     keep_cluster = os.getenv("KEEP_CLUSTER") == "yes"
     with_bastion = os.getenv("WITH_BASTION") != "no"
+    with_kamatera_controller = os.getenv("WITH_KAMATERA_CONTROLLER") != "no"
     try:
         extra_servers = get_extra_servers(extra_servers, high_availability)
         if use_existing_name_prefix:
@@ -121,7 +123,11 @@ def assert_demo_app(extra_servers=None):
                 datacenter_id=datacenter_id,
                 with_bastion=with_bastion,
                 extra_servers=extra_servers,
-                k8s_tfvars_config=get_k8s_tfvars(cluster_autoscaler_image, 0)
+                k8s_tfvars_config=get_k8s_tfvars(
+                    cluster_autoscaler_image,
+                    0,
+                    1 if with_kamatera_controller else 0,
+                )
             )
         expected_ready_nodes = 1 + len(extra_servers)
         util.wait_for(
@@ -205,6 +211,9 @@ def assert_demo_app(extra_servers=None):
         )
         expected_total_nodes = expected_ready_nodes
         expected_ready_nodes -= 1
+        if with_kamatera_controller:
+            # controller will terminate the node
+            expected_total_nodes -= 1
         util.wait_for(
             f"{expected_total_nodes} total nodes, {expected_ready_nodes} ready nodes",
             lambda: util.kubectl_node_count() == (expected_total_nodes, expected_ready_nodes),

@@ -62,6 +62,7 @@ class K8STfvarsConfig:
     ca_nodegroup_rke2_extra_config: dict = None
     ca_extra_args: list = None
     ca_rbac_url: str = None
+    controller_replicas: int = 1
 
 
 def write_k8s_tfvars(tfdir, ssh_pubkeys, k8s_version, tfvars_config: K8STfvarsConfig):
@@ -98,6 +99,7 @@ def write_k8s_tfvars(tfdir, ssh_pubkeys, k8s_version, tfvars_config: K8STfvarsCo
             "cluster_autoscaler_nodegroup_rke2_extra_config": ca_nodegroup_rke2_extra_config,
             "cluster_autoscaler_extra_args": ca_extra_args,
             "cluster_autoscaler_rbac_url": tfvars_config.ca_rbac_url,
+            "kamatera_controller_replicas": tfvars_config.controller_replicas,
         }, indent=2))
 
 
