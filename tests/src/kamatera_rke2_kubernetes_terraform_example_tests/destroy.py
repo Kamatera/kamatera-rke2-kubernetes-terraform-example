@@ -60,7 +60,7 @@ def terminate_networks(datacenter_id, name_prefix):
     return errors
 
 
-def main(name_prefix=None, datacenter_id=None):
+def main(name_prefix=None, datacenter_id=None, force=False):
     tfdir = os.path.join(os.path.dirname(__file__), "..", "..", "..")
     if not name_prefix or not datacenter_id:
         if os.path.exists(os.path.join(tfdir, "01-rke2", "ktb.auto.tfvars.json")):
@@ -84,7 +84,7 @@ def main(name_prefix=None, datacenter_id=None):
         datacenter_ids = [datacenter_id]
     for dc_id in datacenter_ids:
         errors += terminate_networks(dc_id, name_prefix)
-    if errors:
+    if errors and not force:
         raise Exception("Errors occurred during termination:\n" + "\n".join(errors))
     subprocess.check_call(["bash", "-c", '''
         rm -f */*.auto.tfvars.json
@@ -94,3 +94,5 @@ def main(name_prefix=None, datacenter_id=None):
         rm -f .kubeconfig ssh_config ssh_known_hosts .cluster_token
     '''], cwd=tfdir)
     print("Destroyed all resources.")
+    if errors:
+        raise Exception("Errors occurred during termination:\n" + "\n".join(errors))

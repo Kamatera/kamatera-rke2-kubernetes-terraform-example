@@ -31,6 +31,7 @@ def setup(**kwargs):
 @main.command()
 @click.option("--name-prefix")
 @click.option("--datacenter-id")
+@click.option("--force", is_flag=True)
 def destroy(**kwargs):
     from . import destroy
     destroy.main(**kwargs)

@@ -52,14 +52,14 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas):
         ca_extra_args=[
             "--cordon-node-before-terminating",
             # we set low thresholds for faster testing
-            "--scale-down-unneeded-time=1m",
-            "--initial-node-group-backoff-duration=1m",
-            "--max-node-group-backoff-duration=2m",
-            "--node-group-backoff-reset-timeout=5m",
-            "--provisioning-request-max-backoff-time=5m",
-            "--scale-down-delay-after-add=1m",
-            "--scale-down-delay-after-failure=1m",
-            "--scale-down-unready-time=2m",
+            "--scale-down-unneeded-time=5m",
+            "--initial-node-group-backoff-duration=2m",
+            "--max-node-group-backoff-duration=3m",
+            "--node-group-backoff-reset-timeout=6m",
+            "--provisioning-request-max-backoff-time=6m",
+            "--scale-down-delay-after-add=2m",
+            "--scale-down-delay-after-failure=2m",
+            "--scale-down-unready-time=5m",
         ],
         ca_nodegroup_configs={
             "autoscaler": dedent('''

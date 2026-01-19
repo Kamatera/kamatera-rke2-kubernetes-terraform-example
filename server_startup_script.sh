@@ -150,12 +150,30 @@ function init_rke2 {
     fi
 }
 
+local init_func=""
 if [ "${ROLE}" == "bastion" ]; then
-  init_bastion ${@:2}
+  init_func="init_bastion"
 elif [ "${ROLE}" == "rke2" ]; then
-  init_rke2 ${@:2}
-else
+  init_func="init_rke2"
+fi
+if [ "${init_func}" == "" ]; then
   echo "ERROR! Unknown role: ${ROLE}"
+  exit 1
+fi
+
+local initialized=false
+for i in 1 2 3 4 5; do
+  if $init_func "${@:2}"; then
+    initialized=true
+    break
+  else
+    echo "Initialization attempt ${i} failed, retrying in 30 seconds"
+    sleep 30
+  fi
+done
+
+if [ "${initialized}" == "false" ]; then
+  echo "ERROR! Server role initialization failed after multiple attempts"
   exit 1
 fi
 
