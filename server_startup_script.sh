@@ -150,7 +150,7 @@ function init_rke2 {
     fi
 }
 
-local init_func=""
+init_func=""
 if [ "${ROLE}" == "bastion" ]; then
   init_func="init_bastion"
 elif [ "${ROLE}" == "rke2" ]; then
@@ -161,7 +161,7 @@ if [ "${init_func}" == "" ]; then
   exit 1
 fi
 
-local initialized=false
+initialized=false
 for i in 1 2 3 4 5; do
   if $init_func "${@:2}"; then
     initialized=true
