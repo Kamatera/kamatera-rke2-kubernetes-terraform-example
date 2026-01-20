@@ -6,12 +6,15 @@ import traceback
 from . import config
 
 
-def cloudcli(*args, parse_json=False, run=False, **kwargs):
+def cloudcli(*args, parse_json=False, run=False, popen=False, **kwargs):
     if parse_json:
-        assert not run
+        assert not run and not popen
         func = subprocess.check_output
     elif run:
+        assert not popen
         func = subprocess.run
+    elif popen:
+        func = subprocess.Popen
     else:
         func = subprocess.check_call
     res = func([
@@ -25,16 +28,34 @@ def cloudcli(*args, parse_json=False, run=False, **kwargs):
 
 
 def terminate_servers(name_prefix):
-    while True:
-        print("Terminating servers...")
-        res = cloudcli("server", "terminate", "--force", "--name", f'{name_prefix}.*', "--wait", run=True, capture_output=True)
-        print(res.stdout)
-        print(res.stderr)
-        if res.returncode != 0:
-            if 'No servers found' in res.stdout:
-                break
+    errors = []
+    poweroff_servers = []
+    terminate_servers = []
+    for server in cloudcli("server", "list", parse_json=True):
+        if server["name"].startswith(name_prefix):
+            if server.get("power") == "on":
+                poweroff_servers.append(server["name"])
             else:
-                raise Exception(f"Failed to terminate servers (returncode={res.returncode})")
+                terminate_servers.append(server["name"])
+    print(f'Found {len(poweroff_servers)} servers to power off')
+    print(f'Found {len(terminate_servers)} servers to terminate')
+    processes = {}
+    for server_name in poweroff_servers:
+        print(f"Powering off server {server_name}...")
+        processes[server_name] = cloudcli("server", "poweroff", "--name", server_name, "--wait", popen=True)
+    for server_name, process in processes.items():
+        res = process.wait()
+        if res != 0:
+            errors.append(f'Failed to poweroff server: {server_name} (exit code {res})')
+    processes = {}
+    for server_name in [*terminate_servers, *poweroff_servers]:
+        print(f"Terminating server {server_name}...")
+        processes[server_name] = cloudcli("server", "terminate", "--name", server_name, "--force", "--wait", popen=True)
+    for server_name, process in processes.items():
+        res = process.wait()
+        if res != 0:
+            errors.append(f'Failed to terminate server: {server_name} (exit code {res})')
+    return errors
 
 
 def terminate_networks(datacenter_id, name_prefix):
@@ -73,11 +94,7 @@ def main(name_prefix=None, datacenter_id=None, force=False):
     assert name_prefix
     assert datacenter_id
     errors = []
-    try:
-        terminate_servers(name_prefix)
-    except:
-        traceback.print_exc()
-        errors.append("Failed to terminate servers.")
+    errors += terminate_servers(name_prefix)
     if "," in datacenter_id:
         datacenter_ids = [dc.strip() for dc in datacenter_id.split(",")]
     else:

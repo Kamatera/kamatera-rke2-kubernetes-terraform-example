@@ -75,6 +75,10 @@ jobs:
           KAMATERA_API_CLIENT_ID: ${{ secrets.KAMATERA_API_CLIENT_ID }}
           KAMATERA_API_SECRET: ${{ secrets.KAMATERA_API_SECRET }}
         run: |
+          if git log -1 --pretty=%B | grep -q -- "--skip-tests"; then
+            echo "Skipping tests"
+            exit 0
+          fi
           cd tests
           echo "${{ matrix.dotenvs }}" > .env
           uv sync
