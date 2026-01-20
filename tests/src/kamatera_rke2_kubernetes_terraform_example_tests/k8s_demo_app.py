@@ -105,7 +105,9 @@ def assert_demo_app(extra_servers=None):
     datacenter_id = os.getenv("DATACENTER_ID") or "IL"
     k8s_version = os.getenv("K8S_VERSION") or "1.35"
     high_availability = os.getenv("HIGH_AVAILABILITY") == "yes"
-    cluster_autoscaler_image = os.getenv("CLUSTER_AUTOSCALER_IMAGE") or 'ghcr.io/kamatera/kubernetes-autoscaler:kamatera-cluster-autoscaler'
+    cluster_autoscaler_image = os.getenv("CLUSTER_AUTOSCALER_IMAGE")
+    if not cluster_autoscaler_image:
+        cluster_autoscaler_image = f'ghcr.io/kamatera/kubernetes-autoscaler:kamatera-cluster-autoscaler-release-{k8s_version}'
     keep_cluster = os.getenv("KEEP_CLUSTER") == "yes"
     with_bastion = os.getenv("WITH_BASTION") != "no"
     with_kamatera_controller = os.getenv("WITH_KAMATERA_CONTROLLER") != "no"
