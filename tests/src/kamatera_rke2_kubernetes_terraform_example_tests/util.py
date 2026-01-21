@@ -109,17 +109,20 @@ def kubectl(*args, parse_json=False, run=False, **kwargs):
         return None
 
 
-def wait_for(description, condition, timeout_seconds=config.DEFAULT_WAIT_FOR_TIMEOUT_SECONDS, progress=None, poll_seconds=15, retry_on_exception=False):
+def wait_for(
+    description, condition, timeout_seconds=config.DEFAULT_WAIT_FOR_TIMEOUT_SECONDS, progress=None, poll_seconds=15, retry_on_exception=False,
+    print_function=print
+):
     start_time = time.time()
-    print(f'waiting for condition: {description} (with timeout {timeout_seconds} seconds)')
-    print(f'start time: {datetime.datetime.now().isoformat()}')
+    print_function(f'waiting for condition: {description} (with timeout {timeout_seconds} seconds)')
+    print_function(f'start time: {datetime.datetime.now().isoformat()}')
 
     def progress_():
         if progress:
             try:
                 res = progress()
                 if res is not None:
-                    print(res)
+                    print_function(res)
             except:
                 traceback.print_exc()
 
@@ -135,8 +138,8 @@ def wait_for(description, condition, timeout_seconds=config.DEFAULT_WAIT_FOR_TIM
             else:
                 raise
         if res:
-            print(f'condition met: {description}')
-            print(f'end time: {datetime.datetime.now().isoformat()}')
+            print_function(f'condition met: {description}')
+            print_function(f'end time: {datetime.datetime.now().isoformat()}')
             progress_()
             return
         if time.time() - start_time > timeout_seconds:

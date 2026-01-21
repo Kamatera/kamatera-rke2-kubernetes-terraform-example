@@ -82,12 +82,12 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1)
     )
 
 
-def ensure_stability(expected_nodes, expected_pods, iterations=10):
-    print(f'Ensuring cluster stability')
-    print(f'expected_nodes={expected_nodes}')
-    print(f'expected_pods={expected_pods}')
+def ensure_stability(expected_nodes, expected_pods, iterations=10, print_function=print):
+    print_function(f'Ensuring cluster stability')
+    print_function(f'expected_nodes={expected_nodes}')
+    print_function(f'expected_pods={expected_pods}')
     for i in range(iterations):
-        print(f'iteration {i + 1}/{iterations}...')
+        print_function(f'iteration {i + 1}/{iterations}...')
         time.sleep(60)
         if util.kubectl_node_count() != expected_nodes:
             util.kubectl("get", "nodes")
