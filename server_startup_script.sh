@@ -167,7 +167,9 @@ function init_rke2 {
     if dry_run; then
       echo "Dry run: would install RKE2"
     else
-      curl -sfL https://get.rke2.io | sh -
+      curl -sfL https://get.rke2.io > rke2_install.sh || return 1
+      chmod +x rke2_install.sh
+      ./rke2_install.sh || return 1
       if systemctl is-active --quiet "rke2-${rke2_type}.service"; then
         systemctl restart "rke2-${rke2_type}.service" || return 1
       else
