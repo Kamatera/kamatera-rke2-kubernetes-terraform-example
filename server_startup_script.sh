@@ -52,15 +52,15 @@ EOT
     if dry_run; then
       echo "Dry run: would reload and restart ssh.socket and ssh.service"
     else
-      systemctl daemon-reload
-      systemctl restart ssh.socket
-      systemctl restart ssh.service
+      systemctl daemon-reload || return 1
+      systemctl restart ssh.socket || return 1
+      systemctl restart ssh.service || return 1
     fi
 }
 
 function init_bastion {
     local bastion_public_port="${1}"
-    init_ssh "0.0.0.0" "${bastion_public_port}"
+    init_ssh "0.0.0.0" "${bastion_public_port}" || return 1
 }
 
 function set_rke2_node_settings {
@@ -79,14 +79,14 @@ EOF
     if dry_run; then
       echo "Dry run: would apply sysctl settings"
     else
-      sysctl --system
+      sysctl --system || return 1
     fi
     rm -f "${ROOT_PATH}/etc/systemd/system/systemd-networkd-wait-online.service.d/override.conf"
     if dry_run; then
       echo "Dry run: would reload and restart systemd-networkd-wait-online.service"
     else
-      systemctl daemon-reload
-      systemctl restart systemd-networkd-wait-online.service
+      systemctl daemon-reload || return 1
+      systemctl restart systemd-networkd-wait-online.service || return 1
     fi
     mkdir -p "${ROOT_PATH}/root/.ssh"
     if ! [ -e "${ROOT_PATH}/root/.ssh/id_rsa" ]; then ssh-keygen -t rsa -b 4096 -N '' -f "${ROOT_PATH}/root/.ssh/id_rsa"; fi
@@ -138,11 +138,11 @@ function init_rke2 {
     local public_ip="$(find_public_ip)"
     if [ -z "${private_ip}" ]; then
       echo "ERROR! Could not find private IP with prefix: ${private_ip_prefix}"
-      exit 1
+      return 1
     fi
     if [ -z "${public_ip}" ]; then
       echo "ERROR! Could not determine public IP"
-      exit 1
+      return 1
     fi
     echo "Private IP: ${private_ip}"
     echo "Public IP: ${public_ip}"
@@ -151,8 +151,8 @@ function init_rke2 {
     else
       local ssh_ip="0.0.0.0"
     fi
-    init_ssh "${ssh_ip}" "${ssh_port}"
-    set_rke2_node_settings
+    init_ssh "${ssh_ip}" "${ssh_port}" || return 1
+    set_rke2_node_settings || return 1
     echo "Installing RKE2 type=${rke2_type} version=${rke2_version}"
     mkdir -p "${ROOT_PATH}/etc/rancher/rke2"
     export PRIVATE_IP="${private_ip}"
@@ -169,12 +169,12 @@ function init_rke2 {
     else
       curl -sfL https://get.rke2.io | sh -
       if systemctl is-active --quiet "rke2-${rke2_type}.service"; then
-        systemctl restart "rke2-${rke2_type}.service"
+        systemctl restart "rke2-${rke2_type}.service" || return 1
       else
-        systemctl enable "rke2-${rke2_type}.service"
-        systemctl start "rke2-${rke2_type}.service"
+        systemctl enable "rke2-${rke2_type}.service" || return 1
+        systemctl start "rke2-${rke2_type}.service" || return 1
       fi
-      verify_rke2
+      verify_rke2 || return 1
     fi
 }
 
@@ -190,13 +190,14 @@ if [ "${init_func}" == "" ]; then
 fi
 
 initialized=false
-for i in 1 2 3 4 5; do
+retries=${SSS_RETRIES:-5}
+for ((i=1; i<=retries; i++)); do
   if $init_func "${@:2}"; then
     initialized=true
     break
   else
-    echo "Initialization attempt ${i} failed, retrying in 30 seconds"
-    sleep 30
+    echo "Initialization attempt ${i} failed, retrying in ${SSS_RETRY_TTL:-30} seconds"
+    sleep ${SSS_RETRY_TTL:-30}
   fi
 done
 
