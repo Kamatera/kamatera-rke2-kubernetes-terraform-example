@@ -8,6 +8,11 @@ cluster_autoscaler_global_config = <<-EOT
   default-ssh-key = ssh-ed25519 AAAAC3...
   EOT
 
+cluster_autoscaler_extra_args = [
+    "--v=2",
+    "--cordon-node-before-terminating",
+]
+
 # example of nodegroup specific configs for the cluster autoscaler
 # you should modify these according to your requirements
 # see https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/kamatera/README.md

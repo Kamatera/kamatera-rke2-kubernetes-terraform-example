@@ -55,6 +55,7 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1,
         ca_image=cluster_autoscaler_image,
         ca_replicas=ca_replicas,
         ca_extra_args=[
+            "--v=4",
             "--cordon-node-before-terminating",
             # we set low thresholds for faster testing
             "--scale-down-unneeded-time=5m",
@@ -247,6 +248,7 @@ def assert_demo_app(extra_servers=None):
             f"{expected_total_nodes} total nodes, {expected_ready_nodes} ready nodes",
             lambda: util.kubectl_node_count() == (expected_total_nodes, expected_ready_nodes),
             progress=lambda: util.kubectl("get", "nodes"),
+            timeout_seconds=3600,  # need enough time for the controller to delete the not ready node
         )
         ensure_stability(
             (expected_total_nodes, expected_ready_nodes),
