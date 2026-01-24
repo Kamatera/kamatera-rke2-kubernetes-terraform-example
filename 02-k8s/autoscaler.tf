@@ -22,7 +22,8 @@ locals {
     cat >/etc/rancher/rke2/config.yaml.d/99-extra-config.yaml <<-EOF
     __RKE2_EXTRA_CONFIG__
     EOF
-    bash /root/server_startup_script.sh rke2 "${var.private_ip_prefix}" "${var.servers_ssh_port}" "agent" "${var.rke2_version}" "${base64encode(var.rke2_config)}" "${var.with_bastion ? "yes" : "no"}" | tee /root/server_startup_script.log 2>&1
+    export SSS_SLACK_WEBHOOK_URL="${var.cluster_autoscaler_slack_webhook_url}"
+    bash /root/server_startup_script.sh rke2 "${var.private_ip_prefix}" "${var.servers_ssh_port}" "agent" "${var.rke2_version}" "${base64encode(var.rke2_config)}" "${var.with_bastion ? "yes" : "no"}"
   EOT
 
   nodegroup_configs = join("\n\n", [

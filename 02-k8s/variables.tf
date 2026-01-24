@@ -134,3 +134,9 @@ variable "kamatera_controller_args" {
     "-not-ready-duration=15m"
   ]
 }
+
+variable "cluster_autoscaler_slack_webhook_url" {
+  description = "Slack webhook URL for Cluster Autoscaler notifications from server startup script"
+  type        = string
+  default     = ""
+}

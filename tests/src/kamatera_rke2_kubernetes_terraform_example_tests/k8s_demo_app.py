@@ -82,19 +82,34 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1)
     )
 
 
-def ensure_stability(expected_nodes, expected_pods, iterations=10, print_function=print):
+def ensure_stability(expected_nodes, expected_pods, iterations=10, print_function=print, total_iterations=30):
     print_function(f'Ensuring cluster stability')
     print_function(f'expected_nodes={expected_nodes}')
     print_function(f'expected_pods={expected_pods}')
-    for i in range(iterations):
-        print_function(f'iteration {i + 1}/{iterations}...')
+    stable_iterations = 0
+    for i in range(total_iterations):
+        print_function(f'iteration {i + 1}/{total_iterations} (stable iterations: {stable_iterations}/{iterations})...')
+        if stable_iterations + (total_iterations - i) < iterations:
+            print('Not enough iterations left to reach stability, failing')
+            break
         time.sleep(60)
-        if util.kubectl_node_count() != expected_nodes:
+        actual_nodes = util.kubectl_node_count()
+        if actual_nodes != expected_nodes:
             util.kubectl("get", "nodes")
-            raise Exception("Unexpected node count")
-        if util.kubectl_pods_count("demo") != expected_pods:
+            print(f'unexpected node count: {actual_nodes}, expected: {expected_nodes}')
+            stable_iterations = 0
+            continue
+        actual_pods = util.kubectl_pods_count("demo")
+        if actual_pods != expected_pods:
             util.kubectl("get", "pods", "-n", "demo")
-            raise Exception("Unexpected pod count")
+            print(f'unexpected pod count: {actual_pods}, expected: {expected_pods}')
+            stable_iterations = 0
+            continue
+        stable_iterations += 1
+        if stable_iterations >= iterations:
+            break
+    assert stable_iterations >= iterations, f"cluster unstable"
+    print('Cluster is stable')
 
 
 @contextmanager

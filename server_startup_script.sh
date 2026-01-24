@@ -16,8 +16,89 @@ else
   function dry_run {
     return 1
   }
-  export ROOT_PATH=""
+ export ROOT_PATH=""
 fi
+
+SSS_LOG_FILE_DEFAULT="${ROOT_PATH}/root/server_startup_script.log"
+SSS_LOG_FILE="${SSS_LOG_FILE:-${SSS_LOG_FILE_DEFAULT}}"
+export SSS_LOG_FILE
+
+function sss_setup_logging {
+  mkdir -p "$(dirname "${SSS_LOG_FILE}")" 2>/dev/null || true
+  if touch "${SSS_LOG_FILE}" 2>/dev/null; then
+    exec > >(tee -a "${SSS_LOG_FILE}") 2>&1
+  else
+    echo "WARNING: Unable to write log file: ${SSS_LOG_FILE}" >&2
+  fi
+}
+
+function sss_json_escape {
+  local str="${1}"
+  str=${str//\\/\\\\}
+  str=${str//\"/\\\"}
+  str=${str//$'\n'/\\n}
+  str=${str//$'\r'/\\r}
+  str=${str//$'\t'/\\t}
+  printf '%s' "${str}"
+}
+
+function sss_slack_notify_failure {
+  local exit_code="${1}"
+  local webhook_url="${SSS_SLACK_WEBHOOK_URL:-}"
+  if [ -z "${webhook_url}" ]; then
+    return 0
+  fi
+
+  local host
+  host="$(hostname 2>/dev/null || echo "unknown")"
+
+  local tail_lines="${SSS_SLACK_TAIL_LINES:-80}"
+  local max_chars="${SSS_SLACK_MAX_CHARS:-3500}"
+  local log_tail=""
+  if [ -n "${SSS_LOG_FILE:-}" ] && [ -f "${SSS_LOG_FILE}" ]; then
+    log_tail="$(tail -n "${tail_lines}" "${SSS_LOG_FILE}" 2>/dev/null || true)"
+  fi
+  if [ -z "${log_tail}" ]; then
+    log_tail="(log tail unavailable)"
+  fi
+  if [ "${#log_tail}" -gt "${max_chars}" ]; then
+    log_tail="(truncated to last ${max_chars} chars)\n${log_tail: -${max_chars}}"
+  fi
+
+  local role="${ROLE:-unknown}"
+  local attempt="${SSS_ATTEMPT:-?}"
+  local retries="${SSS_RETRIES:-?}"
+  local duration_seconds="${SECONDS:-0}"
+
+  local text
+  text="server_startup_script.sh failed\nhost: ${host}\nrole: ${role}\nattempt: ${attempt}/${retries}\nexit: ${exit_code}\nduration: ${duration_seconds}s\nlog: ${SSS_LOG_FILE:-?}\n\nlast ${tail_lines} lines:\n```\n${log_tail}\n```"
+
+  local payload
+  payload="{\"text\":\"$(sss_json_escape "${text}")\"}"
+
+  curl -sS -X POST \
+    --connect-timeout "${SSS_SLACK_CONNECT_TIMEOUT:-5}" \
+    --max-time "${SSS_SLACK_MAX_TIME:-10}" \
+    -H 'Content-type: application/json' \
+    --data "${payload}" \
+    "${webhook_url}" >/dev/null 2>&1 || echo "WARNING: Slack notification failed" >&2
+}
+
+function sss_on_exit {
+  local exit_code=$?
+  if [ "${exit_code}" -ne 0 ]; then
+    sss_slack_notify_failure "${exit_code}" || true
+    echo "ERROR: server_startup_script.sh failed (exit=${exit_code})" >&2
+    if [ -n "${SSS_LOG_FILE:-}" ]; then
+      echo "ERROR: Log file: ${SSS_LOG_FILE}" >&2
+    fi
+  fi
+}
+
+sss_setup_logging
+SECONDS=0
+echo "=== $(date -Is) server_startup_script.sh start role=${ROLE:-unknown} dry_run=${DRY_RUN:-false} ==="
+trap sss_on_exit EXIT
 
 function find_ip_by_prefix {
   local prefix="${1}"
@@ -194,6 +275,7 @@ fi
 initialized=false
 retries=${SSS_RETRIES:-5}
 for ((i=1; i<=retries; i++)); do
+  export SSS_ATTEMPT="${i}"
   if $init_func "${@:2}"; then
     initialized=true
     break
