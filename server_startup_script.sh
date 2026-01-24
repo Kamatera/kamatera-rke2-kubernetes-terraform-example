@@ -16,7 +16,7 @@ else
   function dry_run {
     return 1
   }
- export ROOT_PATH=""
+  export ROOT_PATH=""
 fi
 
 SSS_LOG_FILE_DEFAULT="${ROOT_PATH}/root/server_startup_script.log"
@@ -62,7 +62,8 @@ function sss_slack_notify_failure {
     log_tail="(log tail unavailable)"
   fi
   if [ "${#log_tail}" -gt "${max_chars}" ]; then
-    log_tail="(truncated to last ${max_chars} chars)\n${log_tail: -${max_chars}}"
+    log_tail="(truncated to last ${max_chars} chars)
+${log_tail: -${max_chars}}"
   fi
 
   local role="${ROLE:-unknown}"
@@ -71,7 +72,21 @@ function sss_slack_notify_failure {
   local duration_seconds="${SECONDS:-0}"
 
   local text
-  text="server_startup_script.sh failed\nhost: ${host}\nrole: ${role}\nattempt: ${attempt}/${retries}\nexit: ${exit_code}\nduration: ${duration_seconds}s\nlog: ${SSS_LOG_FILE:-?}\n\nlast ${tail_lines} lines:\n```\n${log_tail}\n```"
+  text="$(cat <<EOF
+server_startup_script.sh failed
+host: ${host}
+role: ${role}
+attempt: ${attempt}/${retries}
+exit: ${exit_code}
+duration: ${duration_seconds}s
+log: ${SSS_LOG_FILE:-?}
+
+last ${tail_lines} lines:
+\`\`\`
+${log_tail}
+\`\`\`
+EOF
+)"
 
   local payload
   payload="{\"text\":\"$(sss_json_escape "${text}")\"}"
@@ -274,6 +289,7 @@ fi
 
 initialized=false
 retries=${SSS_RETRIES:-5}
+export SSS_RETRIES="${retries}"
 for ((i=1; i<=retries; i++)); do
   export SSS_ATTEMPT="${i}"
   if $init_func "${@:2}"; then
@@ -281,6 +297,7 @@ for ((i=1; i<=retries; i++)); do
     break
   else
     echo "Initialization attempt ${i} failed, retrying in ${SSS_RETRY_TTL:-30} seconds"
+    sss_slack_notify_failure "" || true
     sleep ${SSS_RETRY_TTL:-30}
   fi
 done
