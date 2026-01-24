@@ -44,7 +44,12 @@ def get_extra_servers(extra_servers, high_availability):
     return extra_servers
 
 
-def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1):
+def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1, ca_poweron_on_scale_up=False, ca_poweroff_on_scale_down=False):
+    ca_extra_global_config = []
+    if ca_poweron_on_scale_up:
+        ca_extra_global_config.append("poweron-on-scale-up = true")
+    if ca_poweroff_on_scale_down:
+        ca_extra_global_config.append("poweroff-on-scale-down = true")
     return setup.K8STfvarsConfig(
         ca_rbac_url='https://raw.githubusercontent.com/Kamatera/kubernetes-autoscaler/refs/heads/kamatera-cluster-autoscaler/cluster-autoscaler/cloudprovider/kamatera/examples/rbac.yaml',
         ca_image=cluster_autoscaler_image,
@@ -61,6 +66,7 @@ def get_k8s_tfvars(cluster_autoscaler_image, ca_replicas, controller_replicas=1)
             "--scale-down-delay-after-failure=2m",
             "--scale-down-unready-time=5m",
         ],
+        ca_extra_global_config="\n".join(ca_extra_global_config),
         ca_nodegroup_configs={
             "autoscaler": dedent('''
                 min-size = 1
@@ -125,7 +131,9 @@ def assert_demo_app(extra_servers=None):
         cluster_autoscaler_image = f'ghcr.io/kamatera/kubernetes-autoscaler:kamatera-cluster-autoscaler-release-{k8s_version}'
     keep_cluster = os.getenv("KEEP_CLUSTER") == "yes"
     with_bastion = os.getenv("WITH_BASTION") != "no"
-    with_kamatera_controller = os.getenv("WITH_KAMATERA_CONTROLLER") != "no"
+    with_kamatera_controller = os.getenv("WITH_KAMATERA_CONTROLLER") == "yes"
+    ca_poweron_on_scale_up = os.getenv("CA_POWERON_ON_SCALE_UP") == "yes"
+    ca_poweroff_on_scale_down = os.getenv("CA_POWEROFF_ON_SCALE_DOWN") == "yes"
     try:
         extra_servers = get_extra_servers(extra_servers, high_availability)
         if use_existing_name_prefix:
@@ -144,6 +152,8 @@ def assert_demo_app(extra_servers=None):
                     cluster_autoscaler_image,
                     0,
                     1 if with_kamatera_controller else 0,
+                    ca_poweron_on_scale_up=ca_poweron_on_scale_up,
+                    ca_poweroff_on_scale_down=ca_poweroff_on_scale_down
                 )
             )
         expected_ready_nodes = 1 + len(extra_servers)
@@ -192,10 +202,11 @@ def assert_demo_app(extra_servers=None):
         p = util.kubectl("apply", "-f", "-", run=True, input=json.dumps(k8s_demo_app))
         assert p.returncode == 0
         util.wait_for(
-            "3 pods total but only 2 running (due to scheduling on autoscaler nodes)",
+            "3 pods total but only 2 running (1 is pending for autoscaler node)",
             lambda: util.kubectl_pods_count("demo") == (3,2),
             progress=lambda: util.kubectl("get", "pods", "-n", "demo")
         )
+        # start the autoscaler - which will create 2 autoscaler nodes for the demo pods
         util.kubectl("scale", "deployment", "cluster-autoscaler", "-n", "kube-system", "--replicas=1")
         expected_ready_nodes += 2
         util.wait_for(
@@ -226,6 +237,7 @@ def assert_demo_app(extra_servers=None):
             lambda: util.kubectl_pods_count("demo") == (0, 0),
             progress=lambda: util.kubectl("get", "pods", "-n", "demo")
         )
+        # autoscaler should remove 1 autoscaler node (because min-size=1)
         expected_total_nodes = expected_ready_nodes
         expected_ready_nodes -= 1
         if with_kamatera_controller:

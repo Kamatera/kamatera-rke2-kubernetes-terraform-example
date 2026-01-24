@@ -85,7 +85,7 @@ def write_k8s_tfvars(tfdir, ssh_pubkeys, k8s_version, tfvars_config: K8STfvarsCo
     if not ca_extra_args:
         ca_extra_args = [
             "--cordon-node-before-terminating",
-            "--scale-down-unneeded-time=2m",
+            "--scale-down-unneeded-time=3m",
         ]
     with open(os.path.join(tfdir, "02-k8s", "ktb.auto.tfvars.json"), "w") as f:
         f.write(json.dumps({
