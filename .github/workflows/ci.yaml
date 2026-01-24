@@ -15,7 +15,6 @@ jobs:
             WITH_KAMATERA_CONTROLLER=yes
             CA_POWERON_ON_SCALE_UP=yes
             CA_POWEROFF_ON_SCALE_DOWN=yes
-            CLUSTER_AUTOSCALER_IMAGE=ghcr.io/kamatera/kubernetes-autoscaler:kamatera-cluster-autoscaler
           - |
             K8S_VERSION=1.35
             DATACENTER_ID=EU
@@ -23,7 +22,27 @@ jobs:
             WITH_KAMATERA_CONTROLLER=no
             CA_POWERON_ON_SCALE_UP=no
             CA_POWEROFF_ON_SCALE_DOWN=no
-            CLUSTER_AUTOSCALER_IMAGE=ghcr.io/kamatera/kubernetes-autoscaler:kamatera-cluster-autoscaler
+          - |
+            K8S_VERSION=1.34
+            DATACENTER_ID=IL
+            HIGH_AVAILABILITY=yes
+            WITH_KAMATERA_CONTROLLER=yes
+            CA_POWERON_ON_SCALE_UP=yes
+            CA_POWEROFF_ON_SCALE_DOWN=yes
+          - |
+            K8S_VERSION=1.33
+            DATACENTER_ID=EU
+            HIGH_AVAILABILITY=yes
+            WITH_KAMATERA_CONTROLLER=yes
+            CA_POWERON_ON_SCALE_UP=yes
+            CA_POWEROFF_ON_SCALE_DOWN=yes
+          - |
+            K8S_VERSION=1.32
+            DATACENTER_ID=US-NY2
+            HIGH_AVAILABILITY=yes
+            WITH_KAMATERA_CONTROLLER=yes
+            CA_POWERON_ON_SCALE_UP=yes
+            CA_POWEROFF_ON_SCALE_DOWN=yes
       fail-fast: false  # must continue all tests for cleanup
     steps:
       - uses: actions/checkout@v6
