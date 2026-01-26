@@ -171,9 +171,6 @@ fs.inotify.max_queued_events  = 65536
 net.core.somaxconn = 65535
 net.core.netdev_max_backlog = 16384
 net.ipv4.tcp_max_syn_backlog = 8192
-net.ipv6.conf.all.disable_ipv6 = 1
-net.ipv6.conf.default.disable_ipv6 = 1
-net.ipv6.conf.lo.disable_ipv6 = 1
 EOF
     if dry_run; then
       echo "Dry run: would apply sysctl settings"
