@@ -87,26 +87,37 @@ def get_kubeconfig(name_prefix=None, bastion_port=None, nodes_port=None, identit
     return kubeconfig
 
 
-def kubectl(*args, parse_json=False, run=False, **kwargs):
-    if parse_json:
-        assert not run
-        func = subprocess.check_output
-    elif run:
-        func = subprocess.run
+def kubectl(*args, parse_json=False, run=False, timeout_seconds=360, poll_seconds=10, **kwargs):
+    if timeout_seconds and poll_seconds:
+        state = {}
+        wait_for(
+            description=f"kubectl {' '.join(args)}",
+            condition=lambda: state.update(res=kubectl(*args, parse_json=parse_json, run=run, timeout_seconds=None, poll_seconds=None, **kwargs)) or True,
+            retry_on_exception=True,
+            timeout_seconds=timeout_seconds,
+            poll_seconds=poll_seconds,
+        )
+        return state["res"]
     else:
-        func = subprocess.check_call
-    res = func([
-        "kubectl", *args, *(["-o", "json"] if parse_json else [])
-    ], env={
-        **os.environ,
-        "KUBECONFIG": get_kubeconfig(),
-    }, text=True, **kwargs)
-    if parse_json:
-        return json.loads(res)
-    elif run:
-        return res
-    else:
-        return None
+        if parse_json:
+            assert not run
+            func = subprocess.check_output
+        elif run:
+            func = subprocess.run
+        else:
+            func = subprocess.check_call
+        res = func([
+            "kubectl", *args, *(["-o", "json"] if parse_json else [])
+        ], env={
+            **os.environ,
+            "KUBECONFIG": get_kubeconfig(),
+        }, text=True, **kwargs)
+        if parse_json:
+            return json.loads(res)
+        elif run:
+            return res
+        else:
+            return None
 
 
 def wait_for(

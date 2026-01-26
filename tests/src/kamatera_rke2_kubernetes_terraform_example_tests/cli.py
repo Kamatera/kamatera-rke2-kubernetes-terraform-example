@@ -55,3 +55,10 @@ def get_kubeconfig(**kwargs):
 def get_ssh_config(**kwargs):
     from . import util
     print(util.get_ssh_config(**kwargs))
+
+
+@main.command()
+@click.argument('args', nargs=-1)
+def kubectl(args):
+    from . import util
+    util.kubectl(*args)
